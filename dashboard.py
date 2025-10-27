@@ -123,29 +123,24 @@ for i, session in enumerate(sessions):
     # Format label for display
     display_date = session.strftime('%d-%b')
     
-    # Convert DateTime to time strings for x-axis
-    session_data['TimeStr'] = session_data['DateTime'].dt.strftime('%H:%M:%S')
-    session_data['TimeSeconds'] = session_data['DateTime'].dt.hour * 3600 + session_data['DateTime'].dt.minute * 60 + session_data['DateTime'].dt.second
-    
     fig.add_trace(go.Scatter(
-        x=session_data['TimeStr'],
+        x=session_data['DateTime'],
         y=session_data['RelativeYield'],
         mode='lines',
         name=display_date,
         line=dict(color=colors[i % len(colors)], width=2.5),
-        hovertemplate=f'<b>{display_date}</b><br>Time: %{{x}}<br>Change: %{{y:.2f}} bps<extra></extra>'
+        hovertemplate=f'<b>{display_date}</b><br>Time: %{{x|%H:%M:%S}}<br>Change: %{{y:.2f}} bps<extra></extra>'
     ))
 
-# Add average line - aggregate by hour and time of day
-processed_data['TimeStr'] = processed_data['DateTime'].dt.strftime('%H:%M:%S')
-hourly_avg = processed_data.groupby('TimeStr')['RelativeYield'].mean().reset_index()
+# Add average line - aggregate by hour
+hourly_avg = processed_data.groupby(processed_data['DateTime'].dt.floor('H'))['RelativeYield'].mean().reset_index()
 fig.add_trace(go.Scatter(
-    x=hourly_avg['TimeStr'],
+    x=hourly_avg['DateTime'],
     y=hourly_avg['RelativeYield'],
     mode='lines',
     name='Avg',
     line=dict(color='black', width=2, dash='dash'),
-    hovertemplate='<b>Avg</b><br>Time: %{x}<br>Change: %{y:.2f} bps<extra></extra>'
+    hovertemplate='<b>Avg</b><br>Time: %{x|%H:%M:%S}<br>Change: %{y:.2f} bps<extra></extra>'
 ))
 
 fig.update_layout(
@@ -157,12 +152,12 @@ fig.update_layout(
     },
     xaxis=dict(
         title='Time',
+        tickformat='%H:%M:%S',
+        dtick=300000,  # 5 minutes in milliseconds
         tickangle=-90,
         tickfont=dict(size=8),
         gridcolor='#e0e0e0',
-        showgrid=True,
-        type='category',
-        categoryorder='category ascending'
+        showgrid=True
     ),
     yaxis=dict(
         title='Change (bps)',
