@@ -170,11 +170,11 @@ fig.update_layout(
     xaxis=dict(
         title='Time',
         tickformat='%H:%M:%S',
+        dtick=300000,  # 5 minutes in milliseconds
         tickangle=-90,
         tickfont=dict(size=8),
         gridcolor='#e0e0e0',
-        showgrid=True,
-        nticks=20  # Let it automatically show ~20 ticks based on actual data
+        showgrid=True
     ),
     yaxis=dict(
         title='Change (bps)',
