@@ -57,8 +57,9 @@ processed_data['SessionDate'] = processed_data['DateTime'].apply(
     lambda x: x.date() if x.time() >= overnight_start else x.date() - timedelta(days=1)
 )
 
-# Calculate relative yields
+# Calculate relative yields in basis points
 processed_data['RelativeYield'] = 0.0
+processed_data['TimeOfDay'] = processed_data['DateTime'].dt.time
 
 for session_date in processed_data['SessionDate'].unique():
     session_mask = processed_data['SessionDate'] == session_date
@@ -67,7 +68,8 @@ for session_date in processed_data['SessionDate'].unique():
     if len(session_data) > 0:
         session_data = session_data.sort_values('DateTime')
         first_yield = session_data['Yield'].iloc[0]
-        session_data['RelativeYield'] = session_data['Yield'] - first_yield
+        # Calculate relative yield and convert to basis points
+        session_data['RelativeYield'] = (session_data['Yield'] - first_yield) * 100
         processed_data.loc[session_mask, 'RelativeYield'] = session_data['RelativeYield'].values
 
 print(f"Processed {len(processed_data)} data points")
@@ -109,30 +111,41 @@ fig = go.Figure()
 sessions = sorted(processed_data['SessionDate'].unique())[-6:]  # Get last 6 sessions
 colors = px.colors.qualitative.Set1
 
+# Helper function to convert time to seconds for plotting
+def time_to_seconds(t):
+    """Convert time object to total seconds from midnight"""
+    return t.hour * 3600 + t.minute * 60 + t.second
+
+# Create time-based x-axis data
 for i, session in enumerate(sessions):
-    session_data = processed_data[processed_data['SessionDate'] == session].sort_values('DateTime')
+    session_data = processed_data[processed_data['SessionDate'] == session].sort_values('DateTime').copy()
     
     # Format label for display
     display_date = session.strftime('%d-%b')
     
+    # Convert DateTime to time strings for x-axis
+    session_data['TimeStr'] = session_data['DateTime'].dt.strftime('%H:%M:%S')
+    session_data['TimeSeconds'] = session_data['DateTime'].dt.hour * 3600 + session_data['DateTime'].dt.minute * 60 + session_data['DateTime'].dt.second
+    
     fig.add_trace(go.Scatter(
-        x=session_data['DateTime'],
+        x=session_data['TimeStr'],
         y=session_data['RelativeYield'],
         mode='lines',
         name=display_date,
         line=dict(color=colors[i % len(colors)], width=2.5),
-        hovertemplate=f'<b>{display_date}</b><br>Time: %{{x}}<br>Relative Yield: %{{y:.4f}}<extra></extra>'
+        hovertemplate=f'<b>{display_date}</b><br>Time: %{{x}}<br>Change: %{{y:.2f}} bps<extra></extra>'
     ))
 
-# Add average line
-hourly_avg = processed_data.groupby(processed_data['DateTime'].dt.floor('H'))['RelativeYield'].mean()
+# Add average line - aggregate by hour and time of day
+processed_data['TimeStr'] = processed_data['DateTime'].dt.strftime('%H:%M:%S')
+hourly_avg = processed_data.groupby('TimeStr')['RelativeYield'].mean().reset_index()
 fig.add_trace(go.Scatter(
-    x=hourly_avg.index,
-    y=hourly_avg.values,
+    x=hourly_avg['TimeStr'],
+    y=hourly_avg['RelativeYield'],
     mode='lines',
     name='Avg',
     line=dict(color='black', width=2, dash='dash'),
-    hovertemplate='<b>Avg</b><br>Time: %{x}<br>Relative Yield: %{y:.4f}<extra></extra>'
+    hovertemplate='<b>Avg</b><br>Time: %{x}<br>Change: %{y:.2f} bps<extra></extra>'
 ))
 
 fig.update_layout(
@@ -144,20 +157,20 @@ fig.update_layout(
     },
     xaxis=dict(
         title='Time',
-        tickformat='%H:%M:%S',
-        dtick='M5',  # 5 minutes interval
-        tickangle=-90,  # Rotate labels to vertical
-        tickfont=dict(size=9),  # Smaller font for rotated labels
+        tickangle=-90,
+        tickfont=dict(size=8),
         gridcolor='#e0e0e0',
         showgrid=True,
-        nticks=50  # Show more ticks
+        type='category',
+        categoryorder='category ascending'
     ),
     yaxis=dict(
-        title='Relative Yield',
+        title='Change (bps)',
         gridcolor='#e0e0e0',
         showgrid=True,
         zeroline=True,
-        zerolinecolor='#b0b0b0'
+        zerolinecolor='#b0b0b0',
+        tickformat='.0f'
     ),
     hovermode='x unified',
     template='plotly_white',
@@ -172,7 +185,7 @@ fig.update_layout(
     ),
     plot_bgcolor='white',
     paper_bgcolor='white',
-    margin=dict(l=60, r=60, t=80, b=120)  # Increased bottom margin for rotated labels
+    margin=dict(l=60, r=60, t=80, b=150)
 )
 
 # Define the layout
