@@ -117,14 +117,21 @@ def time_to_seconds(t):
     return t.hour * 3600 + t.minute * 60 + t.second
 
 # Create time-based x-axis data
+# Use a common date to align all sessions on time axis
+base_date = pd.Timestamp('2025-01-01')
+
 for i, session in enumerate(sessions):
     session_data = processed_data[processed_data['SessionDate'] == session].sort_values('DateTime').copy()
     
     # Format label for display
     display_date = session.strftime('%d-%b')
     
+    # Normalize times to a common date for alignment
+    # Extract time components and apply to base date
+    session_data['TimeNormalized'] = pd.to_datetime(session_data['DateTime'].dt.strftime('%H:%M:%S'))
+    
     fig.add_trace(go.Scatter(
-        x=session_data['DateTime'],
+        x=session_data['TimeNormalized'],
         y=session_data['RelativeYield'],
         mode='lines',
         name=display_date,
@@ -132,10 +139,11 @@ for i, session in enumerate(sessions):
         hovertemplate=f'<b>{display_date}</b><br>Time: %{{x|%H:%M:%S}}<br>Change: %{{y:.2f}} bps<extra></extra>'
     ))
 
-# Add average line - aggregate by hour
-hourly_avg = processed_data.groupby(processed_data['DateTime'].dt.floor('H'))['RelativeYield'].mean().reset_index()
+# Add average line - aggregate by time of day
+processed_data['TimeNormalized'] = pd.to_datetime(processed_data['DateTime'].dt.strftime('%H:%M:%S'))
+hourly_avg = processed_data.groupby('TimeNormalized')['RelativeYield'].mean().reset_index()
 fig.add_trace(go.Scatter(
-    x=hourly_avg['DateTime'],
+    x=hourly_avg['TimeNormalized'],
     y=hourly_avg['RelativeYield'],
     mode='lines',
     name='Avg',
