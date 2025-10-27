@@ -145,6 +145,9 @@ fig.update_layout(
     xaxis=dict(
         title='Time',
         tickformat='%H:%M:%S',
+        tickmode='linear',
+        dtick=300000,  # 5 minutes in milliseconds
+        tickangle=-45,  # Rotate labels to vertical
         gridcolor='#e0e0e0',
         showgrid=True
     ),
@@ -168,7 +171,7 @@ fig.update_layout(
     ),
     plot_bgcolor='white',
     paper_bgcolor='white',
-    margin=dict(l=60, r=60, t=80, b=60)
+    margin=dict(l=60, r=60, t=80, b=120)  # Increased bottom margin for rotated labels
 )
 
 # Define the layout
