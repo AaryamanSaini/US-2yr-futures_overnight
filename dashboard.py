@@ -130,9 +130,14 @@ for i, session in enumerate(sessions):
     # Extract time components and apply to base date
     session_data['TimeNormalized'] = pd.to_datetime(session_data['DateTime'].dt.strftime('%H:%M:%S'))
     
-    # Filter out gaps larger than 10 minutes
+    # Filter out points where gap from previous point is > 10 minutes
+    # This keeps continuous timelines and removes large gaps
     session_data['TimeDiff'] = session_data['TimeNormalized'].diff()
-    session_data_filtered = session_data[session_data['TimeDiff'].isna() | (session_data['TimeDiff'] <= pd.Timedelta(minutes=10))].copy()
+    # Keep first point (NaN diff) and points with gap <= 10 minutes
+    session_data_filtered = session_data[
+        session_data['TimeDiff'].isna() | 
+        (session_data['TimeDiff'] <= pd.Timedelta(minutes=10))
+    ].copy()
     
     fig.add_trace(go.Scatter(
         x=session_data_filtered['TimeNormalized'],
