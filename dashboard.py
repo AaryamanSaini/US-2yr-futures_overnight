@@ -145,11 +145,12 @@ fig.update_layout(
     xaxis=dict(
         title='Time',
         tickformat='%H:%M:%S',
-        tickmode='linear',
-        dtick=300000,  # 5 minutes in milliseconds
-        tickangle=-45,  # Rotate labels to vertical
+        dtick='M5',  # 5 minutes interval
+        tickangle=-90,  # Rotate labels to vertical
+        tickfont=dict(size=9),  # Smaller font for rotated labels
         gridcolor='#e0e0e0',
-        showgrid=True
+        showgrid=True,
+        nticks=50  # Show more ticks
     ),
     yaxis=dict(
         title='Relative Yield',
